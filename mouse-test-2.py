@@ -1,62 +1,41 @@
+import cv2
+import mediapipe as mp
+import pyautogui
+cap = cv2.VideoCapture(0)
+hand_detector = mp.solutions.hands.Hands()
+drawing_utils = mp.solutions.drawing_utils
+screen_width, screen_height = pyautogui.size()
+index_y = 0
+while True:
+  _, frame = cap.read()
+  frame = cv2.flip(frame, 1)
+  frame_height, frame_width, _ = frame.shape
+  rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+  output = hand_detector.process(rgb_frame)
+  hands = output.multi_hand_landmarks
+  if hands:
+    for hand in hands:
+      drawing_utils.draw_landmarks(frame, hand)
+      landmarks = hand.landmark
+      for id, landmark in enumerate(landmarks):
+        x = int(landmark.x*frame_width)
+        y = int(landmark.y*frame_height)
+        if id == 8:
+          cv2.circle(img=frame, center=(x,y), radius=10, color=(0, 255, 255))
+          index_x = screen_width/frame_width*x
+          index_y = screen_height/frame_height*y
 
-import os
-import os.path as osp
-import sys
-BUILD_DIR = osp.join(osp.dirname(osp.abspath(__file__)), "build/service/")
-sys.path.insert(0, BUILD_DIR)
-import argparse
-
-import grpc
-from concurrent import futures
-import fib_pb2
-import fib_pb2_grpc
-
-
-class FibCalculatorServicer(fib_pb2_grpc.FibCalculatorServicer):
-
-    def __init__(self):
-        pass
-
-    def Compute(self, request, context):
-        n = request.order
-        value = self._fibonacci(n)
-
-        response = fib_pb2.FibResponse()
-        response.value = value
-
-        return response
-
-    def _fibonacci(self, n):
-        a = 0
-        b = 1
-        if n < 0:
-            return 0
-        elif n == 0:
-            return 0
-        elif n == 1:
-            return b
-        else:
-            for i in range(1, n):
-                c = a + b
-                a = b
-                b = c
-            return b
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", default="0.0.0.0", type=str)
-    parser.add_argument("--port", default=8080, type=int)
-    args = vars(parser.parse_args())
-
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    servicer = FibCalculatorServicer()
-    fib_pb2_grpc.add_FibCalculatorServicer_to_server(servicer, server)
-
-    try:
-        server.add_insecure_port(f"{args['ip']}:{args['port']}")
-        server.start()
-        print(f"Run gRPC Server at {args['ip']}:{args['port']}")
-        server.wait_for_termination()
-    except KeyboardInterrupt:
-        pass
+        if id == 4:
+          cv2.circle(img=frame, center=(x,y), radius=10, color=(0, 255, 255))
+          thumb_x = screen_width/frame_width*x
+          thumb_y = screen_height/frame_height*y
+          print('outside', abs(index_y - thumb_y))
+          if abs(index_y - thumb_y) < 20:
+            pyautogui.click()
+            pyautogui.sleep(1)
+          elif abs(index_y - thumb_y) < 100:
+            pyautogui.moveTo(index_x, index_y)
+          if cv2.waitKey(1)== ord("q"):
+            break
+  cv2.imshow('Virtual Mouse', frame)
+  cv2.waitKey(1)
